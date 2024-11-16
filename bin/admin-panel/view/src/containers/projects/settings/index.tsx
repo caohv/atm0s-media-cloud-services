@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
@@ -13,18 +13,19 @@ import {
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { useDeleteProjectsMutation, useGetProjectsByIdQuery, useUpdateProjectsMutation } from '@/hooks'
+import { useDeleteProjectsMutation, useGetProjectsByIdQuery, useToast, useUpdateProjectsMutation } from '@/hooks'
 import { Layout } from '@/layouts'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { filter, get, includes, map } from 'lodash'
-import { CopyIcon } from 'lucide-react'
-import { useEffect } from 'react'
+import { CopyIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useCopyToClipboard } from 'usehooks-ts'
 import { z } from 'zod'
 
 const formSchema = z.object({
   name: z.string().min(2, {
-    message: 'This field is required',
+    message: 'This field is required.',
   }),
   options: z.object({
     record: z.boolean().optional(),
@@ -53,6 +54,8 @@ const codecs = [
 ]
 
 export const ProjectsSettings = () => {
+  const { toast } = useToast()
+  const [, copy] = useCopyToClipboard()
   const { data: projectsById } = useGetProjectsByIdQuery()
   const { mutate: onUpdateProjects, isPending: isPendingUpdateProjects } = useUpdateProjectsMutation()
   const { mutate: onDeleteProjects, isPending: isPendingDeleteProjects } = useDeleteProjectsMutation()
@@ -67,6 +70,7 @@ export const ProjectsSettings = () => {
       codecs: [],
     },
   })
+  const [visibleProjectSecret, setVisibleProjectSecret] = useState(false)
 
   useEffect(() => {
     if (projectsById) {
@@ -115,22 +119,25 @@ export const ProjectsSettings = () => {
   }
   return (
     <Layout>
-      <div className="max-w-xl">
+      <div className="max-w-3xl">
         <div className="grid gap-4">
+          <div>
+            <p className="mb-1 text-xl font-semibold">Settings</p>
+            <p className="text-sm text-muted-foreground">
+              Update your projects name and other settings here. Be careful with the settings as they can affect your
+              project.
+            </p>
+          </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>General</CardTitle>
-                  <CardDescription>Update your app name and other settings here.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
+                <CardContent className="grid gap-4 pt-6">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Project name</FormLabel>
+                        <FormLabel>Project Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter your project name" {...field} />
                         </FormControl>
@@ -142,8 +149,20 @@ export const ProjectsSettings = () => {
                     <FormLabel>Project Id</FormLabel>
                     <FormControl>
                       <div className="flex items-center gap-2">
-                        <Input readOnly value={projectsById?.id} />
-                        <Button type="button" variant="outline" size="icon">
+                        <Input readOnly value={projectsById?.id} className="flex-1" />
+                        <Button
+                          onClick={() => {
+                            copy(projectsById?.id).then(() => {
+                              toast({
+                                title: 'Copied to clipboard',
+                                description: 'Your project id has been copied to the clipboard.',
+                              })
+                            })
+                          }}
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                        >
                           <CopyIcon />
                         </Button>
                       </div>
@@ -154,8 +173,35 @@ export const ProjectsSettings = () => {
                     <FormLabel>Project Secret</FormLabel>
                     <FormControl>
                       <div className="flex items-center gap-2">
-                        <Input readOnly value={projectsById?.secret} />
-                        <Button type="button" variant="outline" size="icon">
+                        <Input
+                          type={visibleProjectSecret ? 'text' : 'password'}
+                          readOnly
+                          value={projectsById?.secret}
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={() => {
+                            setVisibleProjectSecret(!visibleProjectSecret)
+                          }}
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                        >
+                          {!visibleProjectSecret ? <EyeIcon /> : <EyeOffIcon />}
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            copy(projectsById?.secret).then(() => {
+                              toast({
+                                title: 'Copied to clipboard',
+                                description: 'Your project secret has been copied to the clipboard.',
+                              })
+                            })
+                          }}
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                        >
                           <CopyIcon />
                         </Button>
                       </div>
@@ -277,11 +323,11 @@ export const ProjectsSettings = () => {
             <CardFooter>
               <Dialog>
                 <DialogTrigger>
-                  <Button variant="destructive">Delete this project</Button>
+                  <Button variant="destructive">Delete This Project</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Are you absolutely sure?</DialogTitle>
+                    <DialogTitle>Are You Absolutely Sure?</DialogTitle>
                     <DialogDescription>
                       This action cannot be undone. This will permanently delete your project and remove your data from our
                       servers.
@@ -297,7 +343,7 @@ export const ProjectsSettings = () => {
                       }}
                       variant="destructive"
                     >
-                      I have read and understand these effects
+                      I Have Read And Understand These Effects
                     </Button>
                   </DialogFooter>
                 </DialogContent>
